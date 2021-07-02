@@ -356,6 +356,12 @@ def _get_legal_card_play_actions(player_hand_cards, rival_move):
     moves.sort()
     moves = list(move for move, _ in itertools.groupby(moves))
 
+    # Remove Quad with black and red joker
+    for i in [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17]:
+        illegal_move = [i] * 4 + [20, 30]
+        if illegal_move in moves:
+            moves.remove(illegal_move)
+
     return moves
 
 
@@ -416,5 +422,5 @@ if __name__ == '__main__':
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     server = pywsgi.WSGIServer(('0.0.0.0', 5000), app)
-    server.serve_forever()
-    # app.run(debug=args.debug, host='0.0.0.0')
+    # server.serve_forever()
+    app.run(debug=args.debug, host='0.0.0.0')

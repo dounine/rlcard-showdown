@@ -12,12 +12,12 @@ from utils import move_detector as md, move_selector as ms
 from deep import DeepAgent
 
 EnvCard2RealCard = {3: '3', 4: '4', 5: '5', 6: '6', 7: '7',
-                    8: '8', 9: '9', 10: 'T', 11: 'J', 12: 'Q',
-                    13: 'K', 14: 'A', 17: '2', 20: 'X', 30: 'D'}
+                    8: '8', 9: '9', 10: 'B', 11: 'J', 12: 'Q',
+                    13: 'K', 14: 'A', 17: '2', 20: '小', 30: '大'}
 
 RealCard2EnvCard = {'3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
-                    '8': 8, '9': 9, 'T': 10, 'J': 11, 'Q': 12,
-                    'K': 13, 'A': 14, '2': 17, 'X': 20, 'D': 30}
+                    '8': 8, '9': 9, 'B': 10, 'J': 11, 'Q': 12,
+                    'K': 13, 'A': 14, '2': 17, '小': 20, '大': 30}
 
 pretrained_dir = 'pretrained/douzero_pretrained'
 players = []

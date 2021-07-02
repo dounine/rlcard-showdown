@@ -2,6 +2,7 @@ import itertools
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from gevent import pywsgi
 
 app = Flask(__name__)
 CORS(app)
@@ -249,4 +250,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='DouZero backend')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
-    app.run(debug=args.debug)
+    server = pywsgi.WSGIServer(('0.0.0.0', 5000), app)
+    server.serve_forever()

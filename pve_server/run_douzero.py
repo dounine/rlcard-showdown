@@ -23,7 +23,26 @@ pretrained_dir = 'pretrained/douzero_pretrained'
 players = []
 for position in ['landlord', 'landlord_down', 'landlord_up']:
     players.append(DeepAgent(position, pretrained_dir, use_onnx=True))
-    
+
+cardMappings = {
+    "A": set(["40", "27", "14", "1"]),
+    "2": set(["41", "28", "15", "2"]),
+    "3": set(["42", "29", "16", "3"]),
+    "4": set(["43", "30", "17", "4"]),
+    "5": set(["44", "31", "18", "5"]),
+    "6": set(["45", "32", "19", "6"]),
+    "7": set(["46", "33", "20", "7"]),
+    "8": set(["47", "34", "21", "8"]),
+    "9": set(["48", "35", "22", "9"]),
+    "10": set(["49", "36", "23", "10"]),
+    "J": set(["50", "37", "24", "11"]),
+    "Q": set(["51", "38", "25", "12"]),
+    "K": set(["52", "39", "26", "13"]),
+    "小": set(["53"]),
+    "大": set(["54"])
+}
+
+
 @app.route('/predict', methods=['POST'])
 def predict():
     if request.method == 'POST':
@@ -44,10 +63,13 @@ def predict():
                     return jsonify({'status': 3, 'message': 'the number of hand cards should be 1-17'})
 
             # Number cards left
-            num_cards_left = [int(request.form.get('num_cards_left_landlord')), int(request.form.get('num_cards_left_landlord_down')), int(request.form.get('num_cards_left_landlord_up'))]
+            num_cards_left = [int(request.form.get('num_cards_left_landlord')),
+                              int(request.form.get('num_cards_left_landlord_down')),
+                              int(request.form.get('num_cards_left_landlord_up'))]
             if num_cards_left[player_position] != len(player_hand_cards):
                 return jsonify({'status': 4, 'message': 'the number of cards left do not align with hand cards'})
-            if num_cards_left[0] < 0 or num_cards_left[1] < 0 or num_cards_left[2] < 0 or num_cards_left[0] > 20 or num_cards_left[1] > 17 or num_cards_left[2] > 17:
+            if num_cards_left[0] < 0 or num_cards_left[1] < 0 or num_cards_left[2] < 0 or num_cards_left[0] > 20 or \
+                    num_cards_left[1] > 17 or num_cards_left[2] > 17:
                 return jsonify({'status': 5, 'message': 'the number of cards left not in range'})
 
             # Three landlord cards
@@ -59,12 +81,14 @@ def predict():
             if request.form.get('card_play_action_seq') == '':
                 card_play_action_seq = []
             else:
-                card_play_action_seq = [[RealCard2EnvCard[c] for c in cards] for cards in request.form.get('card_play_action_seq').split(',')]
+                card_play_action_seq = [[RealCard2EnvCard[c] for c in cards] for cards in
+                                        request.form.get('card_play_action_seq').split(',')]
 
             # Other hand cards
             other_hand_cards = [RealCard2EnvCard[c] for c in request.form.get('other_hand_cards')]
             if len(other_hand_cards) != sum(num_cards_left) - num_cards_left[player_position]:
-                return jsonify({'status': 7, 'message': 'the number of the other hand cards do not align with the number of cards left'})
+                return jsonify({'status': 7,
+                                'message': 'the number of the other hand cards do not align with the number of cards left'})
 
             # Last moves
             last_moves = []
@@ -113,14 +137,28 @@ def predict():
                 win_rates[actions[i]] = str(round((win_rate + 1) / 2, 4))
                 result[actions[i]] = str(round(actions_confidence[i], 6))
 
+            alias_index = None
+            if request.form.get("player_hand_cards_alias") is not None:
+                alias_index = {}
+                myCards = request.form.get("player_hand_cards_alias")
+                for predict in list(win_rates):
+                    pushCards = set()
+                    for card in list(predict):
+                        diff = cardMappings[card].difference(pushCards)
+                        bb = set(diff) & set(myCards.split(","))
+                        pushCards.add(list(bb)[0])
+                    alias_index[predict] = ",".join(list(pushCards))
+
+            print(alias_index)
+
             ############## DEBUG ################
             if app.debug:
                 print('--------------- DEBUG START --------------')
                 command = 'curl --data "'
                 parameters = []
                 for key in request.form:
-                    parameters.append(key+'='+request.form.get(key))
-                    print(key+':', request.form.get(key))
+                    parameters.append(key + '=' + request.form.get(key))
+                    print(key + ':', request.form.get(key))
                 command += '&'.join(parameters)
                 command += '" "http://127.0.0.1:5000/predict"'
                 print('Command:', command)
@@ -129,11 +167,15 @@ def predict():
                 print('Result:', result)
                 print('--------------- DEBUG END --------------')
             ############## DEBUG ################
-            return jsonify({'status': 0, 'message': 'success', 'result': result, 'win_rates': win_rates})
+            if alias_index is not None:
+                return jsonify({'status': 0, 'message': 'success', 'win_rates': win_rates,'win_alias':alias_index})
+            else:
+                return jsonify({'status': 0, 'message': 'success', 'win_rates': win_rates})
         except:
             import traceback
             traceback.print_exc()
             return jsonify({'status': -1, 'message': 'unkown error'})
+
 
 @app.route('/legal', methods=['POST'])
 def legal():
@@ -149,6 +191,7 @@ def legal():
             traceback.print_exc()
             return jsonify({'status': -1, 'message': 'unkown error'})
 
+
 class InfoSet(object):
 
     def __init__(self):
@@ -163,6 +206,7 @@ class InfoSet(object):
         self.last_moves = None
         self.played_cards = None
         self.bomb_num = None
+
 
 def _get_legal_card_play_actions(player_hand_cards, rival_move):
     mg = MovesGener(player_hand_cards)
@@ -241,12 +285,14 @@ def _get_legal_card_play_actions(player_hand_cards, rival_move):
         m.sort()
 
     moves.sort()
-    moves = list(move for move,_ in itertools.groupby(moves))
+    moves = list(move for move, _ in itertools.groupby(moves))
 
     return moves
 
+
 if __name__ == '__main__':
     import argparse
+
     parser = argparse.ArgumentParser(description='DouZero backend')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()

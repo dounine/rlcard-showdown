@@ -12,12 +12,12 @@ from utils import move_detector as md, move_selector as ms
 from deep import DeepAgent
 
 EnvCard2RealCard = {3: '3', 4: '4', 5: '5', 6: '6', 7: '7',
-                    8: '8', 9: '9', 10: 'B', 11: 'J', 12: 'Q',
-                    13: 'K', 14: 'A', 17: '2', 20: '小', 30: '大'}
+                    8: '8', 9: '9', 10: 'T', 11: 'J', 12: 'Q',
+                    13: 'K', 14: 'A', 17: '2', 20: 'X', 30: 'D'}
 
 RealCard2EnvCard = {'3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
-                    '8': 8, '9': 9, 'B': 10, 'J': 11, 'Q': 12,
-                    'K': 13, 'A': 14, '2': 17, '小': 20, '大': 30}
+                    '8': 8, '9': 9, 'T': 10, 'J': 11, 'Q': 12,
+                    'K': 13, 'A': 14, '2': 17, 'X': 20, 'D': 30}
 
 pretrained_dir = 'pretrained/douzero_pretrained'
 players = []
@@ -34,14 +34,13 @@ cardMappings = {
     "7": set(["46", "33", "20", "7"]),
     "8": set(["47", "34", "21", "8"]),
     "9": set(["48", "35", "22", "9"]),
-    "B": set(["49", "36", "23", "10"]),
+    "T": set(["49", "36", "23", "10"]),
     "J": set(["50", "37", "24", "11"]),
     "Q": set(["51", "38", "25", "12"]),
     "K": set(["52", "39", "26", "13"]),
-    "小": set(["53"]),
-    "大": set(["54"])
+    "X": set(["53"]),
+    "D": set(["54"])
 }
-
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -54,7 +53,8 @@ def predict():
             player_position = int(player_position)
 
             # Player hand cards
-            player_hand_cards = [RealCard2EnvCard[c] for c in request.form.get('player_hand_cards')]
+            player_hand_cards = [RealCard2EnvCard[c] for c in
+                                 request.form.get('player_hand_cards').replace('B','T')]
             if player_position == 0:
                 if len(player_hand_cards) < 1 or len(player_hand_cards) > 20:
                     return jsonify({'status': 2, 'message': 'the number of hand cards should be 1-20'})
@@ -73,7 +73,11 @@ def predict():
                 return jsonify({'status': 5, 'message': 'the number of cards left not in range'})
 
             # Three landlord cards
-            three_landlord_cards = [RealCard2EnvCard[c] for c in request.form.get('three_landlord_cards')]
+            if request.form.get('three_landlord_cards') != "":
+                three_landlord_cards = [RealCard2EnvCard[c] for c in
+                                        (request.form.get('three_landlord_cards').replace('大小', 'XD').replace('小','X').replace('大', 'D').replace('B', 'T')).split(',')]
+            else:
+                three_landlord_cards = ""
             if len(three_landlord_cards) < 0 or len(three_landlord_cards) > 3:
                 return jsonify({'status': 6, 'message': 'the number of landlord cards should be 0-3'})
 
@@ -82,10 +86,13 @@ def predict():
                 card_play_action_seq = []
             else:
                 card_play_action_seq = [[RealCard2EnvCard[c] for c in cards] for cards in
-                                        request.form.get('card_play_action_seq').split(',')]
+                                        request.form.get('card_play_action_seq').replace('大小', 'XD').replace('小','X').replace('大', 'D').replace('B', 'T').split(',')]
 
             # Other hand cards
-            other_hand_cards = [RealCard2EnvCard[c] for c in request.form.get('other_hand_cards')]
+            other_hand_cards = [RealCard2EnvCard[c] for c in
+                                request.form.get('other_hand_cards').replace('大小', 'XD').replace('小', 'X').replace('大',
+                                                                                                                   'D').replace(
+                                    'B', 'T')]
             if len(other_hand_cards) != sum(num_cards_left) - num_cards_left[player_position]:
                 return jsonify({'status': 7,
                                 'message': 'the number of the other hand cards do not align with the number of cards left'})
@@ -93,12 +100,18 @@ def predict():
             # Last moves
             last_moves = []
             for field in ['last_move_landlord', 'last_move_landlord_down', 'last_move_landlord_up']:
-                last_moves.append([RealCard2EnvCard[c] for c in request.form.get(field)])
+                last_moves.append([RealCard2EnvCard[c] for c in
+                                   request.form.get(field).replace('大小', 'XD').replace('小', 'X').replace('大',
+                                                                                                         'D').replace(
+                                       'B', 'T')])
 
             # Played cards
             played_cards = []
             for field in ['played_cards_landlord', 'played_cards_landlord_down', 'played_cards_landlord_up']:
-                played_cards.append([RealCard2EnvCard[c] for c in request.form.get(field)])
+                played_cards.append([RealCard2EnvCard[c] for c in
+                                     request.form.get(field).replace('大小', 'XD').replace('小', 'X').replace('大',
+                                                                                                           'D').replace(
+                                         'B', 'T')])
 
             # Bomb Num
             bomb_num = int(request.form.get('bomb_num'))
@@ -149,8 +162,6 @@ def predict():
                         pushCards.add(list(bb)[0])
                     alias_index[predict] = ",".join(list(pushCards))
 
-            print(alias_index)
-
             ############## DEBUG ################
             if app.debug:
                 print('--------------- DEBUG START --------------')
@@ -168,7 +179,7 @@ def predict():
                 print('--------------- DEBUG END --------------')
             ############## DEBUG ################
             if alias_index is not None:
-                return jsonify({'status': 0, 'message': 'success', 'win_rates': win_rates,'win_alias':alias_index})
+                return jsonify({'status': 0, 'message': 'success', 'win_rates': win_rates, 'win_alias': alias_index})
             else:
                 return jsonify({'status': 0, 'message': 'success', 'win_rates': win_rates})
         except:

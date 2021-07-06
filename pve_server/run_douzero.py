@@ -54,7 +54,7 @@ def predict():
 
             # Player hand cards
             player_hand_cards = [RealCard2EnvCard[c] for c in
-                                 request.form.get('player_hand_cards').replace('B','T')]
+                                 request.form.get('player_hand_cards').replace('大小', 'XD').replace('小','X').replace('大', 'D').replace('B', 'T')]
             if player_position == 0:
                 if len(player_hand_cards) < 1 or len(player_hand_cards) > 20:
                     return jsonify({'status': 2, 'message': 'the number of hand cards should be 1-20'})
